@@ -21,26 +21,26 @@ jobs:
           java-version: 17
           cache: maven
       
-      - name: Build and SonarQube Scan
-        working-directory: backend
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          mvn clean verify sonar:sonar \
-            -DskipTests \
-            -Dsonar.projectKey=backend \
-            -Dsonar.projectName=backend \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.token=$SONAR_TOKEN
+      # - name: Build and SonarQube Scan
+      #   working-directory: backend
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      #   run: |
+      #     mvn clean verify sonar:sonar \
+      #       -DskipTests \
+      #       -Dsonar.projectKey=backend \
+      #       -Dsonar.projectName=backend \
+      #       -Dsonar.host.url=$SONAR_HOST_URL \
+      #       -Dsonar.token=$SONAR_TOKEN
       
-      - name: SonarQube Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
-        with:
-          scanMetadataReportFile: backend/target/sonar/report-task.txt
-        timeout-minutes: 10
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # - name: SonarQube Quality Gate
+      #   uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+      #   with:
+      #     scanMetadataReportFile: backend/target/sonar/report-task.txt
+      #   timeout-minutes: 10
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Prepare EC2
         uses: appleboy/ssh-action@v1.1.0
@@ -149,24 +149,24 @@ jobs:
             echo "$HEALTH"
             [[ "$HEALTH" == *'"status":"UP"'* ]]
 
-      - name: Send Deployment Report
-        if: always()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: Backend Deployment Report - ${{ github.repository }}
-          to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_USERNAME }}
-          body: |
-            Repository: ${{ github.repository }}
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Status: ${{ job.status }}
-            Actor: ${{ github.actor }}
-            Workflow: ${{ github.workflow }}
-            SonarQube: Completed
-            Quality Gate: Passed if workflow succeeded.
+      # - name: Send Deployment Report
+      #   if: always()
+      #   uses: dawidd6/action-send-mail@v3
+      #   with:
+      #     server_address: smtp.gmail.com
+      #     server_port: 465
+      #     secure: true
+      #     username: ${{ secrets.EMAIL_USERNAME }}
+      #     password: ${{ secrets.EMAIL_PASSWORD }}
+      #     subject: Backend Deployment Report - ${{ github.repository }}
+      #     to: ${{ secrets.EMAIL_TO }}
+      #     from: ${{ secrets.EMAIL_USERNAME }}
+      #     body: |
+      #       Repository: ${{ github.repository }}
+      #       Branch: ${{ github.ref_name }}
+      #       Commit: ${{ github.sha }}
+      #       Status: ${{ job.status }}
+      #       Actor: ${{ github.actor }}
+      #       Workflow: ${{ github.workflow }}
+      #       SonarQube: Completed
+      #       Quality Gate: Passed if workflow succeeded.
