@@ -61,6 +61,9 @@ jobs:
           script: |
             set -e
 
+            # Configure git globally
+            git config --global pull.rebase false
+
             APP_DIR=/home/ec2-user/app
             REPO_NAME=Java-springboot-project
             REPO_URL=https://github.com/CloudTechDevOps/Java-springboot-project.git
@@ -70,8 +73,10 @@ jobs:
 
             if [ -d "$REPO_NAME/.git" ]; then
               cd $REPO_NAME
+
+              git fetch origin main
               git reset --hard origin/main
-              git pull --rebase origin main
+
             else
               git clone $REPO_URL
               cd $REPO_NAME
