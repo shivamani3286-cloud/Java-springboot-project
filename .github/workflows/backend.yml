@@ -1,10 +1,10 @@
 name: Backend to EC2
 
 on:
+  workflow_dispatch:
   # push:
   #   branches:
   #     - main
-  workflow_dispatch:
 
 jobs:
   build-deploy:
@@ -18,9 +18,9 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
           cache: maven
-      
+
       # - name: Build and SonarQube Scan
       #   working-directory: backend
       #   env:
@@ -33,7 +33,7 @@ jobs:
       #       -Dsonar.projectName=backend \
       #       -Dsonar.host.url=$SONAR_HOST_URL \
       #       -Dsonar.token=$SONAR_TOKEN
-      
+
       # - name: SonarQube Quality Gate
       #   uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
       #   with:
@@ -60,18 +60,23 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
+
             APP_DIR=/home/ec2-user/app
             REPO_NAME=Java-springboot-project
             REPO_URL=https://github.com/CloudTechDevOps/Java-springboot-project.git
-            mkdir -p $APP_DIR
-            cd $APP_DIR
+
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
             if [ -d "$REPO_NAME/.git" ]; then
-              cd $REPO_NAME
+              cd "$REPO_NAME"
               git reset --hard
-              git pull origin main
+              git fetch origin
+              git checkout main
+              git reset --hard origin/main
             else
-              git clone $REPO_URL
-              cd $REPO_NAME
+              git clone "$REPO_URL"
+              cd "$REPO_NAME"
             fi
 
       - name: Build Maven Application
@@ -81,6 +86,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
+            set -e
             cd /home/ec2-user/app/Java-springboot-project/backend
             mvn clean package -DskipTests -U
 
@@ -93,21 +99,21 @@ jobs:
           script_stop: false
           script: |
             PID=$(ps -ef | grep '[d]atastore-0.0.7.jar' | awk '{print $2}')
-      
+
             if [ -z "$PID" ]; then
               echo "Application is not running."
               exit 0
             fi
-      
+
             echo "Stopping PID: $PID"
             kill -15 $PID
             sleep 5
-      
+
             if ps -p $PID > /dev/null 2>&1; then
               echo "Force killing PID: $PID"
               kill -9 $PID
             fi
-      
+
             echo "Application stopped."
 
       - name: Start Application
@@ -117,18 +123,23 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
+            set -e
+
             LOG_DIR=/var/log/app
-            sudo mkdir -p $LOG_DIR
-            sudo chown ec2-user:ec2-user $LOG_DIR
+
+            sudo mkdir -p "$LOG_DIR"
+            sudo chown ec2-user:ec2-user "$LOG_DIR"
+
             cd /home/ec2-user/app/Java-springboot-project/backend/target
+
             nohup env \
-              MYSQL_HOST=${{ secrets.DB_HOST }} \
+              MYSQL_HOST="${{ secrets.DB_HOST }}" \
               MYSQL_PORT=3306 \
-              MYSQL_USERNAME=${{ secrets.DB_USERNAME }} \
-              MYSQL_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              LOG_FILE_PATH=$LOG_DIR/datastore.log \
+              MYSQL_USERNAME="${{ secrets.DB_USERNAME }}" \
+              MYSQL_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              LOG_FILE_PATH="$LOG_DIR/datastore.log" \
               java -jar datastore-0.0.7.jar --server.port=8084 \
-              > $LOG_DIR/nohup.out 2>&1 &
+              > "$LOG_DIR/nohup.out" 2>&1 &
 
       - name: Wait for App Startup
         uses: appleboy/ssh-action@v1.1.0
@@ -136,7 +147,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          script: sleep 15
+          script: |
+            sleep 15
 
       - name: Verify Application
         uses: appleboy/ssh-action@v1.1.0
@@ -145,8 +157,12 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
+            set -e
+
             HEALTH=$(curl -s http://localhost:8084/actuator/health)
+
             echo "$HEALTH"
+
             [[ "$HEALTH" == *'"status":"UP"'* ]]
 
       # - name: Send Deployment Report
